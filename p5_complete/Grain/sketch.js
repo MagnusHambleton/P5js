@@ -34,6 +34,7 @@ function draw() {
     arc(int(random(0,width)),int(random(0,height)), size*size, size*size, start, start+arc_length);
   }
   noisee(2, 0, 0, width, height);
+
   noLoop();
 
   function noisee(n, x, y, w, h) {
@@ -41,6 +42,7 @@ function draw() {
     x2 = constrain(x+w, 0, width);
     y1 = constrain(y, 0, height);
     y2 = constrain(y+h, 0, height);
+    loadPixels();
     for (j = y1; j < y2; j++) {  
       for (i = x1; i < x2; i++) {
         let col = get(i, j);
@@ -49,6 +51,7 @@ function draw() {
         set(i, j, col);
       }
     }
+    updatePixels();
   }
 
 }
