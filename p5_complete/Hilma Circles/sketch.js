@@ -1,6 +1,6 @@
 function setup() {
   // Sets the screen to be 720 pixels wide and 400 pixels high
-  createCanvas(1620, 920);
+  createCanvas(displayWidth, displayHeight);
   smooth();
   pixelDensity(4);
   background('#f5f2e6');
@@ -8,34 +8,43 @@ function setup() {
 }
 
 function draw() {
+  if(displayWidth<displayHeight) {
+    canvas_height = displayWidth;
+    canvas_width = displayHeight;
+    rotate(HALF_PI);
+    translate(0,-displayWidth);
+  } else {
+    canvas_height = displayHeight;
+    canvas_width = displayWidth;
+  }
   fill(0);
   let num_circles = random(5,20);
-  let diameter_diff = (height-150)/num_circles;
-  let diameter = height-100;
+  let diameter_diff = (canvas_height*0.8)/num_circles;
+  let diameter = canvas_height*0.85;
 
   for (var i = 0; i <=num_circles; i++) {
     fill(rcol());
-    ellipse(width/2,height/2, diameter,diameter);
+    ellipse(canvas_width/2,canvas_height/2, diameter,diameter);
     if (random()<0.5) {
       fill(rcol());
-      arc(width/2,height/2, diameter,diameter,PI/2,3*PI/2);
+      arc(canvas_width/2,canvas_height/2, diameter,diameter,PI/2,3*PI/2);
     }
 
 
     diameter -=diameter_diff;
   }
   fill('#232224')
-  rect(width/2-5, height/2-10, 10, height/2+10);
+  rect(canvas_width/2-5, canvas_height/2-10, 10, canvas_height/2+10);
 
 
-  noisee(10, 0, 0, width, height);
+  noisee(10, 0, 0, canvas_width, canvas_height);
 
 
   function noisee(n, x, y, w, h) {
-    x1 = constrain(x, 0, width);
-    x2 = constrain(x+w, 0, width);
-    y1 = constrain(y, 0, height);
-    y2 = constrain(y+h, 0, height);
+    x1 = constrain(x, 0, canvas_width);
+    x2 = constrain(x+w, 0, canvas_width);
+    y1 = constrain(y, 0, canvas_height);
+    y2 = constrain(y+h, 0, canvas_height);
     loadPixels();
     for (j = 0; j < pixels.length; j+=4) {
       pixels[j] = pixels[j]+random(-n, n);
@@ -62,8 +71,8 @@ function rcol() {
 
 function variable_grainsize(grain_size,amount) {
   let d = pixelDensity()*grain_size;
-  adjusted_width = width/grain_size;
-  adjusted_height = height/grain_size;
+  adjusted_width = canvas_width/grain_size;
+  adjusted_height = canvas_height/grain_size;
 
   loadPixels();
   for (let x_coord = 0; x_coord < adjusted_width; x_coord++) {
