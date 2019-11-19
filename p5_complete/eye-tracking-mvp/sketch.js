@@ -1,3 +1,4 @@
+
 function preload(){
   data = loadTable(
   'assets/CIE_table.csv',
@@ -15,15 +16,17 @@ var highest_wl=720;
 var lowest_wl =380;
 
 function setup() {
- 	mic = new p5.AudioIn();
+
+  mic = new p5.AudioIn();
   mic.start();
-  createCanvas(displayWidth, displayHeight-120);
-  background(0,0,0);
+
+  createCanvas(displayWidth, 800);
+  background(250);
   fft = new p5.FFT(smoothing,bins); // first number is smoothing (0-1), 2nd number is bins (power of two between 16 and 1024)
   fft.setInput(mic);
-  frameRate(60);
+  frameRate(2);
   isRecording = 1;
-
+  webgazer.begin()
 }
 
 var weights = new Array(num_points).fill(0);
@@ -58,66 +61,91 @@ function frequencies2WaveLengths(lower_freq, upper_freq, lower_wl, upper_wl, fre
 	return wavelengths;
 }
 
+counter = 0;
+
+avg_over = 10;
+last_x = [];
+last_y = [];
 function draw() {
   // background(0);
   // calculating frequencies and brightnesses
-  var prediction = webgazer.getCurrentPrediction();
-	if (prediction) {
-	    var eyex = prediction.x;
-	    var eyey = prediction.y;
-	    console.log(eyex, eyey);
+  //background(200);
+  if(frameCount%1==0) {
+	  var prediction = webgazer.getCurrentPrediction();
+		if (prediction) {
+		    var eyex = prediction.x;
+		    var eyey = prediction.y;
+		}
+		last_x[counter] = eyex;
+		last_y[counter] = eyey;
+		sum_x=0;
+		sum_y=0;
+		for(var i=0; i<last_x.length; i++) {
+			sum_x += last_x[i];
+			sum_y += last_y[i];
+		}
+		avg_x = sum_x/avg_over;
+		avg_y = sum_y/avg_over;
+		console.log(avg_x, avg_y);
+
+		fill(0);
+		ellipse(avg_x, avg_y, 10, 10);
+
+		counter += 1;
+		if(counter>avg_over) {counter = 0;}
 	}
+
     
   
-  var wavelengths = []
-  var ss_learning_speed = 0.05;
+  // var wavelengths = []
+  // var ss_learning_speed = 0.05;
 
-  if(frameCount%6==1) {
+  // if(frameCount%6==1) {
 
-  	var frequencies = [];
-  	var amplitudes = [];
-  	[frequencies, amplitudes] = get_energies(lowest_frequency, highest_frequency, num_points);
-
-
-		var log_highEnd = Math.log(highest_frequency);
-		var log_lowEnd = Math.log(lowest_frequency);
-		var wavelengths = frequencies2WaveLengths(lowest_frequency, highest_frequency, lowest_wl, highest_wl, frequencies);
-		if(frameCount<2000) {
-			learning_speed=0.4;
-		} else { 
-				learning_speed=ss_learning_speed;
-		}
-
-  	for (var i=0; i < num_points; i++) {
-
-  	  if(amplitudes[i] < weights[i]) { weights[i] = weights[i]-learning_speed } else { weights[i] = weights[i] + learning_speed};
-  	  amplitudes[i] = amplitudes[i] - weights[i];
-
-    }
-
-    background(0);
-
-    // for (var i=0; i < num_points; i++) {
-    // 	if( wavelengths[i] > 300 && wavelengths[i] < 390) { amplitudes[i] = 200;}
-    // 	else {amplitudes[i] = 0;}
-    // }
-
-		rgb = spectrum_to_color(data, wavelengths, amplitudes);
-		background(rgb[0], rgb[1], rgb[2]);
+  // 	var frequencies = [];
+  // 	var amplitudes = [];
+  // 	[frequencies, amplitudes] = get_energies(lowest_frequency, highest_frequency, num_points);
 
 
+		// var log_highEnd = Math.log(highest_frequency);
+		// var log_lowEnd = Math.log(lowest_frequency);
+		// var wavelengths = frequencies2WaveLengths(lowest_frequency, highest_frequency, lowest_wl, highest_wl, frequencies);
+		// if(frameCount<2000) {
+		// 	learning_speed=0.4;
+		// } else { 
+		// 		learning_speed=ss_learning_speed;
+		// }
+
+  // 	for (var i=0; i < num_points; i++) {
+
+  // 	  if(amplitudes[i] < weights[i]) { weights[i] = weights[i]-learning_speed } else { weights[i] = weights[i] + learning_speed};
+  // 	  amplitudes[i] = amplitudes[i] - weights[i];
+
+  //   }
+
+  //   background(0);
+
+  //   // for (var i=0; i < num_points; i++) {
+  //   // 	if( wavelengths[i] > 300 && wavelengths[i] < 390) { amplitudes[i] = 200;}
+  //   // 	else {amplitudes[i] = 0;}
+  //   // }
+
+		// rgb = spectrum_to_color(data, wavelengths, amplitudes);
+		// background(rgb[0], rgb[1], rgb[2]);
 
 
 
-		var hex = rgbToHex(rgb[0], rgb[1], rgb[2])
-		fill(255);
-		textAlign(LEFT,BOTTOM);
-		textSize(20);
-		text(hex, displayWidth*0.01, displayHeight*0.8)
 
-  }
 
-  draw_curves(wavelengths,amplitudes);
+		// var hex = rgbToHex(rgb[0], rgb[1], rgb[2])
+		// fill(255);
+		// textAlign(LEFT,BOTTOM);
+		// textSize(20);
+		// text(hex, displayWidth*0.01, displayHeight*0.8)
+
+  // }
+
+  // draw_curves(wavelengths,amplitudes);
 
 }
 
