@@ -1,61 +1,23 @@
-function setup() {
-  var cnv = createCanvas(displayWidth,displayHeight);
-  //cnv.parent(document.getElementById('markdown'));
-  frameRate(60);
-  background('#F1F2ED');
-}
-color_probability = 0.1;
+// function setup() {
+//   var cnv = createCanvas(displayWidth,displayHeight);
+//   //cnv.parent(document.getElementById('markdown'));
+//   frameRate(60);
+//   background('#F1F2ED');
+// }
 
-function draw() {
-	split_into_grid(0,0,width, height,0);
-	variable_grainsize(3, 3);
-    variable_grainsize(1, 4);
-  	variable_grainsize(2, 4);
-	noLoop();
-}
+// function draw() {
+// 	split_into_grid(0,0,width, height,0);
+// 	variable_grainsize(3, 3);
+//     variable_grainsize(1, 4);
+//   	variable_grainsize(2, 4);
+// 	noLoop();
+// }
 
-function split_into_grid(start_x, start_y, end_x, end_y, depth) {
-	var grid_height = end_y - start_y;
-	var grid_width = end_x - start_x
-	var lh_ratio = grid_width / grid_height;
-	var width_cubes = int( random( 1, 5));
-	var height_cubes = int( random( 1, 5)/lh_ratio);
-	console.log('width'+ width_cubes);
-	console.log('height'+ height_cubes);
-	console.log('depth' + depth);
-	var rect_length = grid_width / width_cubes;
-	var rect_height = grid_height / height_cubes;
-	noFill();
-	stroke(0);
-	strokeWeight(2);
-	var rect_x = start_x;
-	var rect_y = start_y;
-	var depth = depth;
-	for(var i=0; i < height_cubes; i++) {
-		for(var j=0; j < width_cubes; j++) {
-			if(depth<2) {
-				split_into_grid(rect_x, rect_y, rect_x+rect_length, rect_y+rect_height, depth+1);
-				rect(rect_x, rect_y, rect_length, rect_height);
-			} else {
-				if(random(0,1)<color_probability) {
-					fill(rcol());
-				} else {
-					noFill();
-				}
-				rect(rect_x, rect_y, rect_length, rect_height);
-			}
-			rect_x += rect_length;
-		}
-		rect_x = start_x;
-		rect_y += rect_height;
-	}
-}
 
-hilma_colors = ['#314290','#4A71C0','#F0D32D','#AB3A2C'];
 function rcol() {
-  var index = int(random(0,hilma_colors.length));
+  var index = int(random(0,colors.length));
   print(index);
-  return color(hilma_colors[index]);
+  return color(colors[index]);
 }
 
 function variable_grainsize(grain_size,amount) {
@@ -86,4 +48,100 @@ function variable_grainsize(grain_size,amount) {
 
 function mousePressed() {
   draw();
+}
+
+function setup() {
+  var cnv = createCanvas(displayWidth,displayHeight);
+  //cnv.parent(document.getElementById('markdown'));
+  frameRate(60);
+  background('#F1F2ED');
+	colors = ['#4A71C0','#F0D32D','#AB3A2C'];
+	segProb = 0.5;
+	colourProb = 0.1;
+}
+
+
+function draw() {
+  background(255);
+  fill(255);
+  rect(0,0,width,height);
+  strokeWeight(2);
+  horDivide(0,0, height, width);
+  /* for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      noFill();
+      rect(i*width/3, j* height/3, width/3, height/3);
+      horDivide(i*width/3, j* height/3, width/3, height/3);
+    }
+  }
+  */
+  	variable_grainsize(3, 3);
+    variable_grainsize(1, 4);
+  	variable_grainsize(2, 4);
+  noLoop();
+}
+
+function keyPressed() {
+  fill(255);
+  rect(0,0,width,height);
+  redraw();
+}
+
+
+
+function horDivide(startingX, startingY, rectHeight, rectWidth) {
+
+  if (rectWidth > 50) {
+    var horSegments = int(random(3,7));
+    var segWidth = rectWidth/horSegments;
+    var xPos = startingX;
+
+    for (var i = 0; i < horSegments; i++) {
+      print(horSegments);
+      if(random(0,1)<segProb && (xPos + segWidth) < (startingX + rectWidth)) {
+        if (random(0,1)<colourProb) {
+          var colour = rcol();
+          fill(colour);
+          rect(xPos, startingY, segWidth, rectHeight);
+          noFill();
+        } else { 
+          noFill();
+          rect(xPos, startingY, segWidth, rectHeight);
+          vertDivide(xPos, startingY, rectHeight, segWidth);
+        }
+        segWidth = rectWidth/horSegments;
+        xPos = xPos + segWidth;
+        xPos = constrain(xPos, startingX, startingX+rectWidth);
+      } else {
+        segWidth = segWidth + rectWidth/horSegments;
+      }
+    }
+  }
+}
+
+function vertDivide(startingX, startingY, rectHeight, rectWidth) {
+  if (rectHeight > 50) {
+    var vertSegments = int(random(3,7));
+    var segHeight = rectHeight/vertSegments;
+    var yPos = startingY;
+    for (var i = 0; i < vertSegments; i++) {
+      
+      if(random(0,1)<segProb && (yPos + segHeight) < (startingY + rectHeight)) {
+        if (random(0,1)<colourProb) {
+          var colour = rcol();
+          fill(colour);
+          rect(startingX, yPos, rectWidth, segHeight);
+        } else { 
+          noFill();
+          rect(startingX, yPos, rectWidth, segHeight);
+          horDivide(startingX, yPos, segHeight, rectWidth);
+       }
+        segHeight = rectHeight/vertSegments;
+        yPos = yPos + segHeight;
+        yPos = constrain(yPos, startingY, startingY+rectHeight);
+      } else {
+      segHeight = segHeight + rectHeight/vertSegments;
+      }
+    }
+  }
 }

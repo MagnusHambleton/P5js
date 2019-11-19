@@ -10,36 +10,52 @@ function setup() {
     x_points[i]= (width+200)*(i) /(resolution * (width+200)) -100;
   }
   pixelDensity(4);
-  console.log("width is " + width + " and largest x is " + max(x_points));
-  console.log("smallest x is " + min(x_points))
-  console.log(x_points);
 }
 
 function draw() {
-  num_lines = 60;
-  curves = [];
-  for(var i=0; i<num_lines; i++) {
-    var momentum = 2*(i-num_lines/2)/(2*num_lines);
-    var drift = 0.01;//abs(i-num_lines/2)/1000;
-    curves[i] = new curve_shape(height/2, momentum, drift);
-    curves[i].display();
+  num_lines = 50;
+  curves = [[]];
+  momentum = [];
+  drift = [];
+  for(var j=0; j<num_lines; j++) {
+    curves[j] = [];
+    momentum[j] = 2*(j-num_lines/2)/(2*num_lines);
+    drift[j] = 0.01;//abs(i-num_lines/2)/1000;
+    curves[j][0] = j*height/num_lines;
+  }
+
+  for(var i=1; i<x_points.length; i++) {
+    for(var j=0; j<num_lines; j++) {
+      if(j===0) { 
+        curves[j][i] = curves[j][i-1] + momentum[j];
+      } else {
+        intended_next_point = curves[j][i-1] + momentum[j];
+        curves[j][i] = max(intended_next_point,curves[j-1][i])
+      }
+      momentum[j] += random(-1,1) * drift[j];
+    }
+  }
+  curvearray=[];
+  for(var j=0; j<num_lines; j++) {
+    curvearray[j] = new curve_shape(curves[j]);
+    curvearray[j].display();
   }
   noLoop();
 
 }
 
 
-
 class curve_shape {
-  constructor(y_starting, starting_momentum, starting_drift) {
-    this.drift = starting_drift;
-    this.momentum = starting_momentum;
-    this.y_points = [];
-    this.y_points[0] = y_starting;
-    for(var i=1; i < resolution * (width+200); i++) {
-      this.y_points[i] = this.y_points[i-1] + this.momentum;
-      this.momentum += random(-1,1) * this.drift;
-    }
+  constructor(y_points) {
+    this.y_points = y_points;
+    // this.drift = starting_drift;
+    // this.momentum = starting_momentum;
+    // this.y_points = [];
+    // this.y_points[0] = y_starting;
+    // for(var i=1; i < resolution * (width+200); i++) {
+    //   this.y_points[i] = this.y_points[i-1] + this.momentum;
+    //   this.momentum += random(-1,1) * this.drift;
+    // }
     this.color = rcol();
     //sconsole.log(this.color);
     //console.log(this.y_points);
@@ -50,7 +66,7 @@ class curve_shape {
     beginShape();
     curveVertex(-100,height+100);
     curveVertex(-100,height+100);
-    noStroke();
+    stroke(2);
     for(var i = 0; i < this.y_points.length-1; i++) {
       curveVertex(x_points[i], this.y_points[i])
     }

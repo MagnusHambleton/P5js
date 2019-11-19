@@ -29,8 +29,6 @@ function draw() {
       fill(rcol());
       arc(canvas_width/2,canvas_height/2, diameter,diameter,PI/2,3*PI/2);
     }
-
-
     diameter -=diameter_diff;
   }
   fill('#232224')
