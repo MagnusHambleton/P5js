@@ -20,13 +20,17 @@ function setup() {
   mic = new p5.AudioIn();
   mic.start();
 
-  createCanvas(displayWidth, 800);
-  background(250);
+  createCanvas(displayWidth, displayHeight);
+  background(255);
   fft = new p5.FFT(smoothing,bins); // first number is smoothing (0-1), 2nd number is bins (power of two between 16 and 1024)
   fft.setInput(mic);
-  frameRate(2);
+  frameRate(60);
   isRecording = 1;
   webgazer.begin()
+  click_counter = 0;
+  position = [width/2, height/2];
+  avg_x = position[0];
+	avg_y = position[1];
 }
 
 var weights = new Array(num_points).fill(0);
@@ -61,16 +65,35 @@ function frequencies2WaveLengths(lower_freq, upper_freq, lower_wl, upper_wl, fre
 	return wavelengths;
 }
 
-counter = 0;
+// **** simulation constants ******
 
-avg_over = 10;
+avg_over = 10; // number of positions to average eye tracking predictions over
+required_calibration_clicks = 10; // number of calibration clicks before drawing starts
+velocity = 0.02; // speed which dot movest towards eye tracking place
+
+// initialise variables
+counter = 0;
 last_x = [];
 last_y = [];
+
+
+
+
 function draw() {
   // background(0);
   // calculating frequencies and brightnesses
   //background(200);
-  if(frameCount%1==0) {
+  if(click_counter<= required_calibration_clicks) {
+  	fill(255);
+  	noStroke();
+  	rect(width-150,0, 150, 50);
+  	fill(0);
+  	textSize(32);
+  	text(click_counter,width-100, 30);
+  }
+
+
+  if(frameCount%6==1 && click_counter > required_calibration_clicks) {
 	  var prediction = webgazer.getCurrentPrediction();
 		if (prediction) {
 		    var eyex = prediction.x;
@@ -88,12 +111,14 @@ function draw() {
 		avg_y = sum_y/avg_over;
 		console.log(avg_x, avg_y);
 
-		fill(0);
-		ellipse(avg_x, avg_y, 10, 10);
-
 		counter += 1;
 		if(counter>avg_over) {counter = 0;}
+
 	}
+	diff_vector = [(avg_x-position[0])*velocity, (avg_y-position[1])*velocity];
+	position = [position[0]+diff_vector[0], position[1]+diff_vector[1]];
+	fill(0);
+	ellipse(position[0],position[1],10,10);
 
     
   
@@ -238,7 +263,7 @@ function draw_curves(wavelengths, amplitudes) {
   	noStroke();
 }
 
-function mousePressed() {
+function keyPressed() {
   if ( isRecording==1 ) { // .isPlaying() returns a boolean
     mic.stop();
     noLoop();
@@ -248,4 +273,9 @@ function mousePressed() {
     loop();
     isRecording=1;
   }
+}
+
+function mousePressed() {
+  click_counter += 1;
+
 }
