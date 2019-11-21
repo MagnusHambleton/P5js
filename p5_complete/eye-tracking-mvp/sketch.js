@@ -1,5 +1,6 @@
 
 function preload(){
+	//song = loadSound('assets/SwimGoodxMerival_SinceUAsked.wav');
   data = loadTable(
   'assets/CIE_table.csv',
 	'csv',
@@ -19,11 +20,11 @@ function setup() {
 
   mic = new p5.AudioIn();
   mic.start();
-
-  createCanvas(displayWidth, displayHeight);
+  createCanvas(displayWidth, displayHeight-200);
   background(255);
   fft = new p5.FFT(smoothing,bins); // first number is smoothing (0-1), 2nd number is bins (power of two between 16 and 1024)
-  fft.setInput(mic);
+	fft.setInput(mic);
+	//song.play();
   frameRate(60);
   isRecording = 1;
   webgazer.begin()
@@ -68,16 +69,16 @@ function frequencies2WaveLengths(lower_freq, upper_freq, lower_wl, upper_wl, fre
 // **** simulation constants ******
 
 avg_over = 10; // number of positions to average eye tracking predictions over
-required_calibration_clicks = 10; // number of calibration clicks before drawing starts
+required_calibration_clicks = 1; // number of calibration clicks before drawing starts
 velocity = 0.02; // speed which dot movest towards eye tracking place
+ss_learning_speed = 0.05;
 
 // initialise variables
 counter = 0;
 last_x = [];
 last_y = [];
-
-
-
+wavelengths = [];
+rgb=[0,0,0];
 
 function draw() {
   // background(0);
@@ -109,68 +110,44 @@ function draw() {
 		}
 		avg_x = sum_x/avg_over;
 		avg_y = sum_y/avg_over;
-		console.log(avg_x, avg_y);
+		//console.log(avg_x, avg_y);
 
 		counter += 1;
 		if(counter>avg_over) {counter = 0;}
 
+		var frequencies = [];
+  	var amplitudes = [];
+  	[frequencies, amplitudes] = get_energies(lowest_frequency, highest_frequency, num_points);
+
+
+		var log_highEnd = Math.log(highest_frequency);
+		var log_lowEnd = Math.log(lowest_frequency);
+		var wavelengths = frequencies2WaveLengths(lowest_frequency, highest_frequency, lowest_wl, highest_wl, frequencies);
+		if(frameCount<2000) {
+			learning_speed=0.4;
+		} else { 
+				learning_speed=ss_learning_speed;
+		}
+
+  	for (var i=0; i < num_points; i++) {
+
+  	  if(amplitudes[i] < weights[i]) { weights[i] = weights[i]-learning_speed } else { weights[i] = weights[i] + learning_speed};
+  	  amplitudes[i] = amplitudes[i] - weights[i];
+
+    }
+
+		rgb = spectrum_to_color(data, wavelengths, amplitudes);
+		console.log(rgb);
+		draw_curves(wavelengths,amplitudes);
+
 	}
 	diff_vector = [(avg_x-position[0])*velocity, (avg_y-position[1])*velocity];
 	position = [position[0]+diff_vector[0], position[1]+diff_vector[1]];
-	fill(0);
+	fill(rgb[0],rgb[1],rgb[2]);
 	ellipse(position[0],position[1],10,10);
+	fill(255);
+	rect(0,height-200,width,200);
 
-    
-  
-  // var wavelengths = []
-  // var ss_learning_speed = 0.05;
-
-  // if(frameCount%6==1) {
-
-  // 	var frequencies = [];
-  // 	var amplitudes = [];
-  // 	[frequencies, amplitudes] = get_energies(lowest_frequency, highest_frequency, num_points);
-
-
-		// var log_highEnd = Math.log(highest_frequency);
-		// var log_lowEnd = Math.log(lowest_frequency);
-		// var wavelengths = frequencies2WaveLengths(lowest_frequency, highest_frequency, lowest_wl, highest_wl, frequencies);
-		// if(frameCount<2000) {
-		// 	learning_speed=0.4;
-		// } else { 
-		// 		learning_speed=ss_learning_speed;
-		// }
-
-  // 	for (var i=0; i < num_points; i++) {
-
-  // 	  if(amplitudes[i] < weights[i]) { weights[i] = weights[i]-learning_speed } else { weights[i] = weights[i] + learning_speed};
-  // 	  amplitudes[i] = amplitudes[i] - weights[i];
-
-  //   }
-
-  //   background(0);
-
-  //   // for (var i=0; i < num_points; i++) {
-  //   // 	if( wavelengths[i] > 300 && wavelengths[i] < 390) { amplitudes[i] = 200;}
-  //   // 	else {amplitudes[i] = 0;}
-  //   // }
-
-		// rgb = spectrum_to_color(data, wavelengths, amplitudes);
-		// background(rgb[0], rgb[1], rgb[2]);
-
-
-
-
-
-		// var hex = rgbToHex(rgb[0], rgb[1], rgb[2])
-		// fill(255);
-		// textAlign(LEFT,BOTTOM);
-		// textSize(20);
-		// text(hex, displayWidth*0.01, displayHeight*0.8)
-
-  // }
-
-  // draw_curves(wavelengths,amplitudes);
 
 }
 
@@ -255,7 +232,7 @@ function draw_curves(wavelengths, amplitudes) {
   	ver_min = 0;	
 
   	for (var i = 0; i < wavelengths.length; i++) {
-    	vertex(map(wavelengths[i], hor_max,hor_min,0,width), map(amplitudes[i], ver_min, ver_max, height, 0));
+    	vertex(map(wavelengths[i], hor_max,hor_min,0,width), map(amplitudes[i], ver_min, ver_max, height, 200));
   	}
   	vertex(width,height);
   	vertex(0,height);
@@ -264,7 +241,7 @@ function draw_curves(wavelengths, amplitudes) {
 }
 
 function keyPressed() {
-  if ( isRecording==1 ) { // .isPlaying() returns a boolean
+  if ( isRecording==1 ) { 
     mic.stop();
     noLoop();
     isRecording=0;
@@ -272,7 +249,14 @@ function keyPressed() {
     mic.start();
     loop();
     isRecording=1;
-  }
+	}
+	// if ( song.isPlaying() ) { // .isPlaying() returns a boolean
+  //   song.pause();
+  //   noLoop();
+  // } else {
+  //   song.play();
+  //   loop();
+  // }
 }
 
 function mousePressed() {
