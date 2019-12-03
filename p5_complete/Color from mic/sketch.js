@@ -15,7 +15,7 @@ var highest_wl=720;
 var lowest_wl =380;
 
 function setup() {
- 	mic = new p5.AudioIn();
+  mic = new p5.AudioIn();
   mic.start();
   createCanvas(displayWidth, displayHeight-120);
   background(0,0,0);

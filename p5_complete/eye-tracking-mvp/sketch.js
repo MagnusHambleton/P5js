@@ -1,10 +1,10 @@
 
 function preload(){
 	//song = loadSound('assets/SwimGoodxMerival_SinceUAsked.wav');
-  data = loadTable(
-  'assets/CIE_table.csv',
-	'csv',
-	'header');
+	data = loadTable(
+	'assets/CIE_table.csv',
+		'csv',
+		'header');
 }
 
 smoothing = 0.6;
@@ -18,20 +18,23 @@ var lowest_wl =380;
 
 function setup() {
 
-  mic = new p5.AudioIn();
-  mic.start();
-  createCanvas(displayWidth, displayHeight-200);
-  background(255);
-  fft = new p5.FFT(smoothing,bins); // first number is smoothing (0-1), 2nd number is bins (power of two between 16 and 1024)
+	mic = new p5.AudioIn();
+	mic.start();
+	createCanvas(displayWidth, displayHeight-200);
+	background(255);
+	fft = new p5.FFT(smoothing,bins); // first number is smoothing (0-1), 2nd number is bins (power of two between 16 and 1024)
 	fft.setInput(mic);
 	//song.play();
-  frameRate(60);
-  isRecording = 1;
-  webgazer.begin()
-  click_counter = 0;
-  position = [width/2, height/2];
-  avg_x = position[0];
+	frameRate(60);
+	isRecording = 1;
+	webgazer.begin()
+	click_counter = 0;
+	position = [width/2, height/2];
+	avg_x = position[0];
 	avg_y = position[1];
+
+	context = getAudioContext();
+
 }
 
 var weights = new Array(num_points).fill(0);
@@ -42,14 +45,14 @@ function get_energies(starting_frequency, ending_frequency, num_buckets) {
 
 	// setting up functions to generate logarithmically spaced buckets
 	var b = Math.log(ending_frequency/starting_frequency)/num_buckets;
-  var a = starting_frequency;
-  fft.analyze();
-  // loop through all buckets and get energies for them
+	var a = starting_frequency;
+	fft.analyze();
+	// loop through all buckets and get energies for them
 	for (var i=0; i < num_buckets; i++) {
 		var low = a*Math.exp(b*i); // lower frequency band for getting energy
-  	var high = a*Math.exp(b*(i+1)); // upper frequency band for getting energy
-  	frequencies[i] = low;
-  	amplitudes[i] = fft.getEnergy(low,high);
+		var high = a*Math.exp(b*(i+1)); // upper frequency band for getting energy
+		frequencies[i] = low;
+		amplitudes[i] = fft.getEnergy(low,high);
 	}
 	return [frequencies, amplitudes];
 
@@ -69,9 +72,10 @@ function frequencies2WaveLengths(lower_freq, upper_freq, lower_wl, upper_wl, fre
 // **** simulation constants ******
 
 avg_over = 10; // number of positions to average eye tracking predictions over
-required_calibration_clicks = 1; // number of calibration clicks before drawing starts
+required_calibration_clicks = 10; // number of calibration clicks before drawing starts
 velocity = 0.02; // speed which dot movest towards eye tracking place
 ss_learning_speed = 0.05;
+drawing_point_size = 10; // size of ellipse
 
 // initialise variables
 counter = 0;
@@ -95,7 +99,9 @@ function draw() {
 
 
   if(frameCount%6==1 && click_counter > required_calibration_clicks) {
-	  var prediction = webgazer.getCurrentPrediction();
+
+		context.resume();
+	  	var prediction = webgazer.getCurrentPrediction();
 		if (prediction) {
 		    var eyex = prediction.x;
 		    var eyey = prediction.y;
@@ -112,42 +118,52 @@ function draw() {
 		avg_y = sum_y/avg_over;
 		//console.log(avg_x, avg_y);
 
+		// incements or resets the counter to the number to average over each time
 		counter += 1;
 		if(counter>avg_over) {counter = 0;}
 
 		var frequencies = [];
-  	var amplitudes = [];
-  	[frequencies, amplitudes] = get_energies(lowest_frequency, highest_frequency, num_points);
+  		var amplitudes = [];
+  		[frequencies, amplitudes] = get_energies(lowest_frequency, highest_frequency, num_points);
 
+		loudness = max(amplitudes);
+		drawing_point_size = loudness;
+		console.log(loudness);
 
 		var log_highEnd = Math.log(highest_frequency);
 		var log_lowEnd = Math.log(lowest_frequency);
 		var wavelengths = frequencies2WaveLengths(lowest_frequency, highest_frequency, lowest_wl, highest_wl, frequencies);
+
+		// tries to use the first 2000 frames to "learn" the ambient sound level and adjust for it
+		// after 20000 frames, it uses the predefined learning factor
 		if(frameCount<2000) {
 			learning_speed=0.4;
 		} else { 
-				learning_speed=ss_learning_speed;
+			learning_speed=ss_learning_speed;
 		}
 
-  	for (var i=0; i < num_points; i++) {
+		// removes the time average for each of the frequencies (e.g. to remove/adjust for a persistent background noise)
+		for (var i=0; i < num_points; i++) {
 
-  	  if(amplitudes[i] < weights[i]) { weights[i] = weights[i]-learning_speed } else { weights[i] = weights[i] + learning_speed};
-  	  amplitudes[i] = amplitudes[i] - weights[i];
+			if(amplitudes[i] < weights[i]) { weights[i] = weights[i]-learning_speed } else { weights[i] = weights[i] + learning_speed};
+			amplitudes[i] = amplitudes[i] - weights[i];
 
-    }
+		}
 
 		rgb = spectrum_to_color(data, wavelengths, amplitudes);
-		console.log(rgb);
+		//console.log(rgb);
+
+		// draw sound spectrum at the bottom
+		fill(255);
+		rect(0,height-200,width,200);
 		draw_curves(wavelengths,amplitudes);
 
 	}
+
 	diff_vector = [(avg_x-position[0])*velocity, (avg_y-position[1])*velocity];
 	position = [position[0]+diff_vector[0], position[1]+diff_vector[1]];
 	fill(rgb[0],rgb[1],rgb[2]);
-	ellipse(position[0],position[1],10,10);
-	fill(255);
-	rect(0,height-200,width,200);
-
+	ellipse(position[0],position[1],drawing_point_size,drawing_point_size);
 
 }
 
@@ -160,11 +176,11 @@ function spectrum_to_color(data, wavelengths, amplitudes) {
 	var CIE_z = data.getColumn("z");
 	var total_y = 0;
 	for(var i = 0; i < CIE_wl.length; i++) {
-	  CIE[CIE_wl[i]] = {x: CIE_x[i], y: CIE_y[i], z: CIE_z[i]};
-	  CIE_wl_int[i] = int(CIE_wl[i]);
-	  total_y += float(CIE_y[i]);
+		CIE[CIE_wl[i]] = {x: CIE_x[i], y: CIE_y[i], z: CIE_z[i]};
+		CIE_wl_int[i] = int(CIE_wl[i]);
+		total_y += float(CIE_y[i]);
 	}
-	// interpolate 
+	// interpolate for wavelengths that end up between onces that are in the CIE table
 	var total = [0,0,0];
 	total_y = total_y;
 	for(var i = 0; i < wavelengths.length; i++) {
@@ -179,24 +195,25 @@ function spectrum_to_color(data, wavelengths, amplitudes) {
 		total[1] += amplitudes[i]/255.0*(lowerCIE.y*(1-weight) + upperCIE.y * weight)/total_y;
 		total[2] += amplitudes[i]/255.0*(lowerCIE.z*(1-weight) + upperCIE.z * weight)/total_y;
 	}
+
 	var sum_total = total[1];
 	total[0] = total[0]/sum_total;
 	total[1] = total[1]/sum_total;
 	total[2] = total[2]/sum_total;
 	var rgb = [];
 	//console.log("totas",total);
-  // D50 non Bradford-adapted D50 matrix
+  	// D50 non Bradford-adapted D50 matrix
 	//rgb[0] = int( 255 * ( 3.1338561 * total[0] - 1.6168667 * total[1] - 0.4906146 * total[2] ) );
 	//rgb[1] = int( 255 * (-0.9787684 * total[0] + 1.9161415 * total[1] + 0.0334540 * total[2] ) );
 	//rgb[2] = int( 255 * ( 0.0719453 * total[0] - 0.2289914 * total[1] + 1.4052427 * total[2] ) );
 
-
-  // xyz to RGB D65 matrix conversion (assuming CIE 1964 was using D64)
-	rgb[0] = int( 255 * ( 3.2404542 * total[0] - 1.5371385 * total[1] -0.4985314 * total[2] ) );
-  rgb[1] = int( 255 * (-0.9692660 * total[0] + 1.8760108 * total[1] + 0.0415560 * total[2] ) );
-	rgb[2] = int( 255 * ( 0.0556434 * total[0] - 0.2040259 * total[1] + 1.0572252  * total[2] ) );
+  	// xyz to RGB D65 matrix conversion (assuming CIE 1964 was using D64)
+	rgb[0] = int( 255 * ( 3.2404542 * total[0] - 1.5371385 * total[1] - 0.4985314 * total[2] ) );
+  	rgb[1] = int( 255 * (-0.9692660 * total[0] + 1.8760108 * total[1] + 0.0415560 * total[2] ) );
+	rgb[2] = int( 255 * ( 0.0556434 * total[0] - 0.2040259 * total[1] + 1.0572252 * total[2] ) );
 	
-
+	// normalizing the resulting RGB colour so it ends up being visualizable
+	// by removing negatives or values above 255 in a sensible way
 	if(min(rgb)<0) {
 		var min_rgb = min(rgb);
 		rgb[0] += -min_rgb;
@@ -232,7 +249,7 @@ function draw_curves(wavelengths, amplitudes) {
   	ver_min = 0;	
 
   	for (var i = 0; i < wavelengths.length; i++) {
-    	vertex(map(wavelengths[i], hor_max,hor_min,0,width), map(amplitudes[i], ver_min, ver_max, height, 200));
+    	vertex(map(wavelengths[i], hor_max,hor_min,0,width), map(amplitudes[i], ver_min, ver_max, height, height-200));
   	}
   	vertex(width,height);
   	vertex(0,height);
@@ -241,25 +258,25 @@ function draw_curves(wavelengths, amplitudes) {
 }
 
 function keyPressed() {
-  if ( isRecording==1 ) { 
-    mic.stop();
-    noLoop();
-    isRecording=0;
-  } else {
-    mic.start();
-    loop();
-    isRecording=1;
-	}
+	if ( isRecording==1 ) { 
+		mic.stop();
+		noLoop();
+		isRecording=0;
+	} else {
+		mic.start();
+		loop();
+		isRecording=1;
+		}
 	// if ( song.isPlaying() ) { // .isPlaying() returns a boolean
-  //   song.pause();
-  //   noLoop();
-  // } else {
-  //   song.play();
-  //   loop();
-  // }
+	//   song.pause();
+	//   noLoop();
+	// } else {
+	//   song.play();
+	//   loop();
+	// }
 }
 
 function mousePressed() {
-  click_counter += 1;
+	click_counter += 1;
 
 }
